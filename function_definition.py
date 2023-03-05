@@ -133,17 +133,19 @@ def classify(posterior_prob_tabs: 'list[DiscreteFactor]') -> list:
 
     return predicted_labels
 
-def compare(y_true:'list', y_computed:'list', scoring_function: 'Literal["accuracy","recall", "precision", "f1_score"]') -> float|object:
+def compare(y_true:'list', y_computed:'list', scoring_function: 'Literal["accuracy","recall", "precision", "f1_score"]', average: 'Literal["macro", "disjointed"]' = 'macro') -> float|object:
     if not len(y_true) == len(y_computed):
-        raise Exception('y_true and y_computed must be the same length')
+        raise Exception('y_true and y_computed must be the same length.')
+    if average != 'macro' and scoring_function == 'accuracy':
+        raise Exception('accuracy can only work with macro.')
     if scoring_function == 'accuracy':
         return compute_accuracy(y_true, y_computed)
     if scoring_function == 'recall':
-        return compute_recall(y_true, y_computed)
+        return compute_recall(y_true, y_computed, average)
     if scoring_function == 'precision':
-        return compute_precision(y_true, y_computed)
+        return compute_precision(y_true, y_computed, average)
     if scoring_function == 'f1_score':
-        return compute_f1_score(y_true, y_computed)
+        return compute_f1_score(y_true, y_computed, average)
     
 
 def compute_accuracy(y_true:'list', y_computed:'list') -> float:
@@ -155,10 +157,10 @@ def compute_accuracy(y_true:'list', y_computed:'list') -> float:
     
     return nominator / len(y_true)
 
-def compute_f1_score(y_true:'list', y_computed:'list') -> object:
+def compute_f1_score(y_true:'list', y_computed:'list', average: 'Literal["macro", "disjointed"]') -> object:
     
-    precision = compute_precision(y_true, y_computed)
-    recall = compute_recall(y_true, y_computed)
+    precision = compute_precision(y_true, y_computed, average='disjointed')
+    recall = compute_recall(y_true, y_computed, average='disjointed')
 
     unique_values = np.unique(y_true)
 
@@ -171,9 +173,11 @@ def compute_f1_score(y_true:'list', y_computed:'list') -> object:
     
         f1_score[value] =  2 * nominator / denominator
     
+    if average == 'macro':
+        return np.mean([f1_score[l] for l in f1_score])
     return f1_score
 
-def compute_precision(y_true:'list', y_computed:'list')-> object:
+def compute_precision(y_true:'list', y_computed:'list', average: 'Literal["macro", "disjointed"]')-> object:
     
     unique_values = np.unique(y_true)
     accuracy = {}
@@ -188,12 +192,14 @@ def compute_precision(y_true:'list', y_computed:'list')-> object:
                 denominator += 1
         
         accuracy[value] = nominator / denominator
+    if average == 'macro':
+        return np.mean([accuracy[l] for l in accuracy])
     return accuracy
 
 
-def compute_recall(y_true:'list', y_computed:'list') -> object:
+def compute_recall(y_true:'list', y_computed:'list', average: 'Literal["macro", "disjointed"]') -> object:
     unique_values = np.unique(y_true)
-    accuracy = {}
+    recall = {}
     for value in unique_values:
 
         nominator = 0
@@ -206,7 +212,9 @@ def compute_recall(y_true:'list', y_computed:'list') -> object:
                 denominator += 1
 
         if denominator != 0:
-            accuracy[value] = nominator / denominator
+            recall[value] = nominator / denominator
         else:
-            accuracy[value] = 1
-    return accuracy
+            recall[value] = 1
+    if average == 'macro':
+        return np.mean([recall[l] for l in recall])
+    return recall
