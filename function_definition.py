@@ -1,13 +1,20 @@
 from pgmpy.inference import VariableElimination
 from pgmpy.models import NaiveBayes, BayesianNetwork
-
+from pgmpy.factors.discrete import DiscreteFactor
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import networkx as nx
 
+from sys import version_info
 
-def discretize(df, columns_to_discretize, bins_edges, categories=None):
+if version_info < (3,8):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
+
+
+def discretize(df:'pd.DataFrame', columns_to_discretize:'list[str]', bins_edges:'dict', categories:'dict'=None) -> pd.DataFrame:
     """
 
     :param df: pandas dataframe
@@ -16,14 +23,14 @@ def discretize(df, columns_to_discretize, bins_edges, categories=None):
     :param categories: Dictionary containing for each feature the name of each bin
     :return: A copy of the discretized dataframe
     """
-
+    new_df = df.copy()
     for col in columns_to_discretize:
         df[col] = pd.cut(df[col], bins_edges[col], labels=categories[col])
 
     return df
 
 
-def get_node_size(label: 'str'):
+def get_node_size(label: 'str')-> float:
     """
 
     :param label: Name of the node.
@@ -38,7 +45,7 @@ def get_node_size(label: 'str'):
     return 250 + max(width, height) * 40
 
 
-def draw_net(nodes: 'list[str]', net: 'BayesianNetwork|NaiveBayes', style='full', target=None):
+def draw_net(nodes: 'list[str]', net: 'BayesianNetwork|NaiveBayes', style:'Literal["full","trimmed","circular"]'='full', target=None)-> None:
     """
 
     :param nodes: List of nodes sorted in drawing order
@@ -91,7 +98,7 @@ def draw_net(nodes: 'list[str]', net: 'BayesianNetwork|NaiveBayes', style='full'
     plt.show()
 
 
-def get_the_posterior_probability(model: 'VariableElimination', data: 'pd.DataFrame', target: 'str'):
+def get_the_posterior_probability(model: 'VariableElimination', data: 'pd.DataFrame', target: 'str')-> list:
     """
 
     :param model: VariableElimination obtained bya Bayesian Net
@@ -112,7 +119,7 @@ def get_the_posterior_probability(model: 'VariableElimination', data: 'pd.DataFr
     return result
 
 
-def classify(posterior_prob_tabs: 'lisr[DiscreteFactor]'):
+def classify(posterior_prob_tabs: 'list[DiscreteFactor]') -> list:
     """
 
     :param posterior_prob_tabs: List of posterior probability tables
@@ -125,3 +132,81 @@ def classify(posterior_prob_tabs: 'lisr[DiscreteFactor]'):
         predicted_labels.append(ppt.state_names[ppt.variables[0]][np.argmax(ppt.values)])
 
     return predicted_labels
+
+def compare(y_true:'list', y_computed:'list', scoring_function: 'Literal["accuracy","recall", "precision", "f1_score"]') -> float|object:
+    if not len(y_true) == len(y_computed):
+        raise Exception('y_true and y_computed must be the same length')
+    if scoring_function == 'accuracy':
+        return compute_accuracy(y_true, y_computed)
+    if scoring_function == 'recall':
+        return compute_recall(y_true, y_computed)
+    if scoring_function == 'precision':
+        return compute_precision(y_true, y_computed)
+    if scoring_function == 'f1_score':
+        return compute_f1_score(y_true, y_computed)
+    
+
+def compute_accuracy(y_true:'list', y_computed:'list') -> float:
+    
+    nominator = 0
+    for i in range(len(y_true)):
+        if y_true[i] == y_computed[i]:
+            nominator += 1
+    
+    return nominator / len(y_true)
+
+def compute_f1_score(y_true:'list', y_computed:'list') -> object:
+    
+    precision = compute_precision(y_true, y_computed)
+    recall = compute_recall(y_true, y_computed)
+
+    unique_values = np.unique(y_true)
+
+    f1_score = {}
+    
+    for value in unique_values:
+
+        nominator = precision[value] * recall[value]
+        denominator = precision[value] + recall[value]
+    
+        f1_score[value] =  2 * nominator / denominator
+    
+    return f1_score
+
+def compute_precision(y_true:'list', y_computed:'list')-> object:
+    
+    unique_values = np.unique(y_true)
+    accuracy = {}
+    for value in unique_values:
+
+        nominator = 0
+        denominator = 0
+        for i in range(len(y_true)):
+            if y_computed[i] == value:
+                if y_true[i] == y_computed[i]:
+                    nominator += 1
+                denominator += 1
+        
+        accuracy[value] = nominator / denominator
+    return accuracy
+
+
+def compute_recall(y_true:'list', y_computed:'list') -> object:
+    unique_values = np.unique(y_true)
+    accuracy = {}
+    for value in unique_values:
+
+        nominator = 0
+        denominator = 0
+        for i in range(len(y_true)):
+            if y_computed[i] == value:
+                if y_true[i] == y_computed[i]:
+                    nominator += 1
+            if y_computed[i] != value and y_true[i] == value:
+                denominator += 1
+
+        if denominator != 0:
+            accuracy[value] = nominator / denominator
+        else:
+            accuracy[value] = 1
+    return accuracy
