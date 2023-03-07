@@ -211,10 +211,7 @@ def compute_recall(y_true:'list', y_computed:'list', average: 'Literal["macro", 
             if y_computed[i] != value and y_true[i] == value:
                 denominator += 1
 
-        if denominator != 0:
-            recall[value] = nominator / denominator
-        else:
-            recall[value] = 1
+        recall[value] = nominator / (denominator + nominator)
     if average == 'macro':
         return np.mean([recall[l] for l in recall])
     return recall
