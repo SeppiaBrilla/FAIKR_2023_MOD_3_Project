@@ -221,3 +221,13 @@ def compute_recall(y_true: 'list', y_computed: 'list', average: 'Literal["macro"
     if average == 'macro':
         return np.mean([recall[l] for l in recall])
     return recall
+
+
+def multi_bar_plot(data_to_plot:'list[list]', names:'list[str]', x_label:'str') -> 'None':
+    _, axes = plt.subplots(len(data_to_plot), 1, figsize=(15, 5 * len(data_to_plot)))
+    axes = axes.flatten()
+
+    for ax, res, name in zip(axes, data_to_plot, names):
+        ax.set_title(f"{name}")
+        probs = pd.DataFrame(res)
+        probs.plot.bar(x=x_label, ax=ax)
