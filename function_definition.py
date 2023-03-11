@@ -137,6 +137,20 @@ def classify(posterior_prob_tabs: 'list[DiscreteFactor]') -> list:
     return predicted_labels
 
 
+def classify_2(model, df):
+    """
+
+    :param model: Trained bayesian networkthat you want to yous to predict your data
+    :param data: Dataframe that you predict
+    :return: A list containing the predicted labels
+    """
+    predicted_probabilities = model.predict_probability(df)
+    print(predicted_probabilities)
+    predicted_index = predicted_probabilities.idxmax(axis=1)
+    y_pred = [predicted_probabilities.columns.get_loc(idx) for idx in predicted_index]
+    return y_pred
+
+
 def compare(y_true: 'list', y_computed: 'list',
             scoring_function: 'Literal["accuracy","recall", "precision", "f1_score"]',
             average: 'Literal["macro", "disjointed"]' = 'macro') -> float | object:
