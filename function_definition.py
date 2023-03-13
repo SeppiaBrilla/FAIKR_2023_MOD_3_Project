@@ -1,6 +1,7 @@
 from pgmpy.inference import VariableElimination
 from pgmpy.models import NaiveBayes, BayesianNetwork
 from pgmpy.factors.discrete import DiscreteFactor
+from pgmpy.estimators import BayesianEstimator
 
 import numpy as np
 import pandas as pd
@@ -27,16 +28,16 @@ def discretize(df: 'pd.DataFrame', columns_to_discretize: 'list[str]', bins_edge
     """
     new_df = df.copy()
     for col in columns_to_discretize:
-        df[col] = pd.cut(df[col], bins_edges[col], labels=categories[col])
+        new_df[col] = pd.cut(new_df[col], bins_edges[col], labels=categories[col])
 
-    return df
+    return new_df
 
 
 def get_node_size(label: 'str') -> float:
     """
 
     :param label: Name of the node.
-    :return: The necessary dimensions of a circle for the lable to be inside the circle
+    :return: The necessary dimensions of a circle for the label to be inside the circle
     """
 
     fig, ax = plt.subplots(figsize=(3, 3))
@@ -106,7 +107,7 @@ def get_the_posterior_probability(model: 'VariableElimination', data: 'pd.DataFr
 
     :param model: VariableElimination obtained by a Bayesian Net
     :param data: Dataframe containing the data
-    :param target: Variable to predictt
+    :param target: Variable to predict
     :return: A list of DiscreteFactor containing the posterior probability associated ad every datapoint
     """
 
@@ -122,122 +123,62 @@ def get_the_posterior_probability(model: 'VariableElimination', data: 'pd.DataFr
     return result
 
 
-def classify(posterior_prob_tabs: 'list[DiscreteFactor]') -> list:
+def my_fit(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> None:
     """
 
-    :param posterior_prob_tabs: List of posterior probability tables
-    :return: A list of predicted labels. Each
-            datapoint are classified to the element with a maximum posterior probability
+    :param net: Untrained bayesian network
+    :param data: Dataframe used to estimate the parameter of the net
+    :return: None
+    """
+    estimator = BayesianEstimator(net, data)
+
+    pseudo_counts = {}
+    for node in data.columns:
+        node_card = len(data.loc[:, node].unique())
+        parents_card = int(np.prod([len(data.loc[:, p].unique()) for p in net.get_parents(node)]))
+        pseudo_counts[node] = np.ones((node_card, parents_card))
+
+    cpds = estimator.get_parameters(prior_type="dirichlet", pseudo_counts=pseudo_counts)
+
+    for cpd in cpds:
+        net.add_cpds(cpd)
+
+
+def check_consistency(models: 'dict str: BayesianNetwork|NaiveBayes'):
+    """
+    This function check the consistency of the models
+    :param models: dict of the models to test
+    :return: None
+    """
+    for net_type, net in models.items():
+        if net.check_model():
+            print(net_type, "consistency check successfully completed")
+        else:
+            print(net_type, "consistency check failed")
+
+
+def classify(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> list:
     """
 
-    predicted_labels = []
-    for ppt in posterior_prob_tabs:
-        predicted_labels.append(ppt.state_names[ppt.variables[0]][np.argmax(ppt.values)])
-
-    return predicted_labels
-
-
-def classify_2(model, df):
-    """
-
-    :param model: Trained bayesian networkthat you want to yous to predict your data
+    :param net: Trained bayesian network that you want to use to predict your data
     :param data: Dataframe that you predict
     :return: A list containing the predicted labels
     """
-    predicted_probabilities = model.predict_probability(df)
-    print(predicted_probabilities)
+    predicted_probabilities = net.predict_probability(data)
     predicted_index = predicted_probabilities.idxmax(axis=1)
     y_pred = [predicted_probabilities.columns.get_loc(idx) for idx in predicted_index]
+
     return y_pred
 
 
-def compare(y_true: 'list', y_computed: 'list',
-            scoring_function: 'Literal["accuracy","recall", "precision", "f1_score"]',
-            average: 'Literal["macro", "disjointed"]' = 'macro') -> float | object:
+def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str') -> 'None':
+    """
 
-
-    if not len(y_true) == len(y_computed):
-        raise Exception('y_true and y_computed must be the same length.')
-    if average != 'macro' and scoring_function == 'accuracy':
-        raise Exception('accuracy can only work with macro.')
-    if scoring_function == 'accuracy':
-        return compute_accuracy(y_true, y_computed)
-    if scoring_function == 'recall':
-        return compute_recall(y_true, y_computed, average)
-    if scoring_function == 'precision':
-        return compute_precision(y_true, y_computed, average)
-    if scoring_function == 'f1_score':
-        return compute_f1_score(y_true, y_computed, average)
-
-
-def compute_accuracy(y_true: 'list', y_computed: 'list') -> float:
-    nominator = 0
-    for i in range(len(y_true)):
-        if y_true[i] == y_computed[i]:
-            nominator += 1
-
-    return nominator / len(y_true)
-
-
-def compute_f1_score(y_true: 'list', y_computed: 'list', average: 'Literal["macro", "disjointed"]') -> object:
-    precision = compute_precision(y_true, y_computed, average='disjointed')
-    recall = compute_recall(y_true, y_computed, average='disjointed')
-
-    unique_values = np.unique(y_true)
-
-    f1_score = {}
-
-    for value in unique_values:
-        nominator = precision[value] * recall[value]
-        denominator = precision[value] + recall[value]
-
-        f1_score[value] = 2 * nominator / denominator
-
-    if average == 'macro':
-        return np.mean([f1_score[l] for l in f1_score])
-    return f1_score
-
-
-def compute_precision(y_true: 'list', y_computed: 'list', average: 'Literal["macro", "disjointed"]') -> object:
-    unique_values = np.unique(y_true)
-    accuracy = {}
-    for value in unique_values:
-
-        nominator = 0
-        denominator = 0
-        for i in range(len(y_true)):
-            if y_computed[i] == value:
-                if y_true[i] == y_computed[i]:
-                    nominator += 1
-                denominator += 1
-
-        accuracy[value] = nominator / denominator
-    if average == 'macro':
-        return np.mean([accuracy[l] for l in accuracy])
-    return accuracy
-
-
-def compute_recall(y_true: 'list', y_computed: 'list', average: 'Literal["macro", "disjointed"]') -> object:
-    unique_values = np.unique(y_true)
-    recall = {}
-    for value in unique_values:
-
-        nominator = 0
-        denominator = 0
-        for i in range(len(y_true)):
-            if y_computed[i] == value:
-                if y_true[i] == y_computed[i]:
-                    nominator += 1
-            if y_computed[i] != value and y_true[i] == value:
-                denominator += 1
-
-        recall[value] = nominator / (denominator + nominator)
-    if average == 'macro':
-        return np.mean([recall[l] for l in recall])
-    return recall
-
-
-def multi_bar_plot(data_to_plot:'list[list]', names:'list[str]', x_label:'str') -> 'None':
+    :param data_to_plot:
+    :param names:
+    :param x_label:
+    :return:
+    """
     _, axes = plt.subplots(len(data_to_plot), 1, figsize=(15, 5 * len(data_to_plot)))
     axes = axes.flatten()
 
