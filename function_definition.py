@@ -144,7 +144,7 @@ def my_fit(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> None:
         net.add_cpds(cpd)
 
 
-def check_consistency(models: 'dict str: BayesianNetwork|NaiveBayes'):
+def check_consistency(models: 'dict [str,BayesianNetwork|NaiveBayes]'):
     """
     This function check the consistency of the models
     :param models: dict of the models to test
@@ -171,7 +171,7 @@ def classify(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> list:
     return y_pred
 
 
-def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str') -> 'None':
+def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str', hspace:'float|None' = None) -> 'None':
     """
 
     :param data_to_plot:
@@ -179,10 +179,47 @@ def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str
     :param x_label:
     :return:
     """
-    _, axes = plt.subplots(len(data_to_plot), 1, figsize=(15, 5 * len(data_to_plot)))
+    fig, axes = plt.subplots(len(data_to_plot), 1, figsize=(15, 5 * len(data_to_plot)))
     axes = axes.flatten()
+    if not hspace is None:
+        fig.subplots_adjust(hspace=hspace)
 
     for ax, res, name in zip(axes, data_to_plot, names):
         ax.set_title(f"{name}")
         probs = pd.DataFrame(res)
         probs.plot.bar(x=x_label, ax=ax)
+
+def mp(string:'str') -> 'str':
+    """mp, make printable, convert an incoming string to a printable one.
+
+    Args:
+        string (str): string to convert
+
+    Returns:
+        str: converted string
+    """
+    return string.replace(" ", "\n").lower()
+
+def get_trimmed_shape(dataframes: 'list[pd.DataFrame]', columns_to_trim:'list[str]', result_dataframe_column_names:'list[str]', result_dataframe_indeces_names:'list[str]') -> 'pd.DataFrame':
+    """return a dataframe with the shape of the trimmed dataframe without dupicate on columns columns_to_trim
+
+    Args:
+        dataframes (list[pd.DataFrame]): list of dataframe to have get trimmed shape
+        columns_to_trim (list[str]): list of colums where to search duplicates
+        column_names (list[str]): name of columns of the resulting dataframe
+        indeces_names (list[str]): list of indeces of rows
+
+    Returns:
+        pd.DataFrame: output dataframe
+    """
+    res = {}
+
+    for df, idx in zip(dataframes, result_dataframe_indeces_names):
+        for col, col_name in zip(columns_to_trim, result_dataframe_column_names):
+            df_shape = df[col].drop_duplicates().shape
+            shape = f'rows = {df_shape[0]}, columns = {df_shape[1]}'
+            res[col_name] = res.get(col_name, []) + [shape]
+
+        res['idx'] = res.get('idx', []) + [idx]
+
+    return pd.DataFrame(res).set_index('idx')
