@@ -123,9 +123,8 @@ def get_the_posterior_probability(model: 'VariableElimination', data: 'pd.DataFr
     return result
 
 
-def my_fit(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> None:
+def fit(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> None:
     """
-
     :param net: Untrained bayesian network
     :param data: Dataframe used to estimate the parameter of the net
     :return: None
@@ -173,7 +172,6 @@ def classify(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> list:
 
 def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str', hspace:'float|None' = None) -> 'None':
     """
-
     :param data_to_plot:
     :param names:
     :param x_label:
@@ -223,3 +221,27 @@ def get_trimmed_shape(dataframes: 'list[pd.DataFrame]', columns_to_trim:'list[st
         res['idx'] = res.get('idx', []) + [idx]
 
     return pd.DataFrame(res).set_index('idx')
+
+def make_queries(inferences: 'list[VariableElimination]', names:'list[str]', evidences:'list[dict[str, float]]', query:'list[str]') -> 'dict':
+    """run the query made by evidence-query on all inferences and returns a dictionary or a dataframe with the results
+
+    Args:
+        inferences (list): list of variableElimination inference on which the query will be runned
+        names (list): name to be assigned at the result of the query for each inference
+        evidences (list): list of evidences on which to run the query
+        query (list): list of elements to query on
+
+    Returns:
+        dict: the query results
+    """
+    results = {}
+    for inference, name in zip(inferences, names):
+        results[name] = []
+        for ev in evidences:
+            inference_result = inference.query(query, evidence=ev)
+            result_dict = {'evidence' : list(ev.keys())[0]}
+            for q_r in [0, 1, 2]:
+                result_dict[q_r + 1] = inference_result.values[q_r]
+            results[name].append(result_dict)
+
+    return results
