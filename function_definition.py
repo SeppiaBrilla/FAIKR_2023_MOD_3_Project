@@ -1,6 +1,5 @@
 from pgmpy.inference import VariableElimination
 from pgmpy.models import NaiveBayes, BayesianNetwork
-from pgmpy.factors.discrete import DiscreteFactor
 from pgmpy.estimators import BayesianEstimator
 
 import numpy as np
@@ -91,10 +90,6 @@ def draw_net(nodes: 'list[str]', net: 'BayesianNetwork|NaiveBayes',
             else:
                 pos[nodes[i]] = [(i - 18), 0]
 
-    else:
-        pos = nx.circular_layout(graph, center=(0, 0))
-        pos[target] = (-0.01, 0)
-
     nx.draw_networkx_nodes(graph, pos, node_color='lightblue', node_size=node_sizes)
     nx.draw_networkx_edges(graph, pos, width=1.5, alpha=0.5, arrows=True, arrowstyle='->,head_width=0.1,head_length=2')
     nx.draw_networkx_labels(graph, pos, font_color='black', font_size=10)
@@ -170,8 +165,10 @@ def classify(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> list:
     return y_pred
 
 
-def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str', hspace:'float|None' = None) -> 'None':
+def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str',
+                   hspace: 'float|None' = None) -> 'None':
     """
+    :param hspace:
     :param data_to_plot:
     :param names:
     :param x_label:
@@ -187,32 +184,33 @@ def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str
         probs = pd.DataFrame(res)
         probs.plot.bar(x=x_label, ax=ax)
 
-def mp(string:'str') -> 'str':
+
+def mp(string: 'str') -> 'str':
     """mp, make printable, convert an incoming string to a printable one.
 
-    Args:
-        string (str): string to convert
-
-    Returns:
-        str: converted string
+    :param string: string to convert
+    :returns: converted string
     """
     return string.replace(" ", "\n").lower()
 
-def get_trimmed_shape(dataframes: 'list[pd.DataFrame]', columns_to_trim:'list[str]', result_dataframe_column_names:'list[str]', result_dataframe_indeces_names:'list[str]') -> 'pd.DataFrame':
-    """return a dataframe with the shape of the trimmed dataframe without dupicate on columns columns_to_trim
 
-    Args:
-        dataframes (list[pd.DataFrame]): list of dataframe to have get trimmed shape
-        columns_to_trim (list[str]): list of colums where to search duplicates
-        column_names (list[str]): name of columns of the resulting dataframe
-        indeces_names (list[str]): list of indeces of rows
+def get_trimmed_shape(dataframes: 'list[pd.DataFrame]', columns_to_trim: 'list[str]',
+                      result_dataframe_column_names: 'list[str]',
+                      result_dataframe_indexes_names: 'list[str]') -> 'pd.DataFrame':
+    """
 
-    Returns:
-        pd.DataFrame: output dataframe
+    Return a dataframe with the shape of the trimmed dataframe without duplicate on columns columns_to_trim
+
+    :param dataframes: list of dataframe to have get trimmed shape
+    :param columns_to_trim: list of columns where to search duplicates
+    :param result_dataframe_column_names: name of columns of the resulting dataframe
+    :param result_dataframe_indexes_names: list of indexes of rows
+    :returns:pd.DataFrame: output dataframe
+
     """
     res = {}
 
-    for df, idx in zip(dataframes, result_dataframe_indeces_names):
+    for df, idx in zip(dataframes, result_dataframe_indexes_names):
         for col, col_name in zip(columns_to_trim, result_dataframe_column_names):
             df_shape = df[col].drop_duplicates().shape
             shape = f'rows = {df_shape[0]}, columns = {df_shape[1]}'
@@ -222,25 +220,27 @@ def get_trimmed_shape(dataframes: 'list[pd.DataFrame]', columns_to_trim:'list[st
 
     return pd.DataFrame(res).set_index('idx')
 
-def make_queries(inferences: 'list[VariableElimination]', names:'list[str]', evidences:'list[dict[str, float]]', query:'list[str]') -> 'dict':
-    """run the query made by evidence-query on all inferences and returns a dictionary or a dataframe with the results
 
-    Args:
-        inferences (list): list of variableElimination inference on which the query will be runned
-        names (list): name to be assigned at the result of the query for each inference
-        evidences (list): list of evidences on which to run the query
-        query (list): list of elements to query on
+def make_queries(inferences: 'list[VariableElimination]', names: 'list[str]', evidences: 'list[dict[str, float]]',
+                 query: 'list[str]') -> 'dict':
+    """
+    run the query made by evidence-query on all inferences and returns a dictionary or a dataframe with the results
 
-    Returns:
-        dict: the query results
+
+    :param: inferences : list of variableElimination inference on which the query will be runned
+    :param: names: name to be assigned at the result of the query for each inference
+    :param: evidences: list of evidences on which to run the query
+    :param: : list of elements to query on
+    :returns: dict: the query results
+
     """
     results = {}
     for inference, name in zip(inferences, names):
         results[name] = []
         for ev in evidences:
             inference_result = inference.query(query, evidence=ev)
-            result_dict = {'evidence' : list(ev.keys())[0]}
-            for q_r in [0, 1, 2]:
+            result_dict = {'evidence': list(ev.keys())[0]}
+            for q_r in range(int(max(inference_result.values))):
                 result_dict[q_r + 1] = inference_result.values[q_r]
             results[name].append(result_dict)
 
