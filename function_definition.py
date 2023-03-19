@@ -239,9 +239,10 @@ def make_queries(inferences: 'list[VariableElimination]', names: 'list[str]', ev
         results[name] = []
         for ev in evidences:
             inference_result = inference.query(query, evidence=ev)
-            result_dict = {'evidence': list(ev.keys())[0]}
-            for q_r in range(int(max(inference_result.values))):
-                result_dict[q_r + 1] = inference_result.values[q_r]
+            result_dict = {'evidence':  ', '.join(list(ev.keys()))}
+            iterator = list(inference_result.state_names.values())[0]
+            for q_r in range(len(iterator)):
+                result_dict[iterator[q_r]] = inference_result.values[q_r]
             results[name].append(result_dict)
 
     return results
