@@ -174,7 +174,12 @@ def multi_bar_plot(data_to_plot: 'list[list]', names: 'list[str]', x_label: 'str
     :param x_label:
     :return:
     """
-    fig, axes = plt.subplots(len(data_to_plot), 1, figsize=(15, 5 * len(data_to_plot)))
+    number_of_graphs = len(data_to_plot)
+    if number_of_graphs == 1:
+        pd.DataFrame(data_to_plot[0]).plot(x=x_label, kind='bar', title=names[0])
+        return
+
+    fig, axes = plt.subplots(number_of_graphs, 1, figsize=(15, 5 * len(data_to_plot)))
     axes = axes.flatten()
     if not hspace is None:
         fig.subplots_adjust(hspace=hspace)
