@@ -1,3 +1,4 @@
+from IPython.core.display_functions import display
 from pgmpy.inference import VariableElimination
 from pgmpy.models import NaiveBayes, BayesianNetwork
 from pgmpy.estimators import BayesianEstimator
@@ -244,7 +245,7 @@ def make_queries(inferences: 'list[VariableElimination]', names: 'list[str]', ev
         results[name] = []
         for ev in evidences:
             inference_result = inference.query(query, evidence=ev)
-            result_dict = {'evidence':  ', '.join(list(ev.keys()))}
+            result_dict = {'evidence': ', '.join(list(ev.keys()))}
             iterator = list(inference_result.state_names.values())[0]
             for q_r in range(len(iterator)):
                 result_dict[iterator[q_r]] = inference_result.values[q_r]
@@ -253,10 +254,10 @@ def make_queries(inferences: 'list[VariableElimination]', names: 'list[str]', ev
     return results
 
 
-def dict_to_dataframes(dict:'dict') -> dict[str, pd.DataFrame]:
+def dict_to_dataframes(my_dict: 'dict') -> dict[str, pd.DataFrame]:
     new_dicts = {}
-    for key in dict.keys():
-        for result in dict[key]:
+    for key in my_dict.keys():
+        for result in my_dict[key]:
             new_res = result.copy()
             del new_res['evidence']
             new_res['model'] = key
@@ -267,3 +268,14 @@ def dict_to_dataframes(dict:'dict') -> dict[str, pd.DataFrame]:
         dataframes[key] = pd.DataFrame(new_dicts[key]).set_index('model')
 
     return dataframes
+
+
+def show_details(dfs_dict: 'dict'):
+    """
+    This function could be used to show the details of a specific query
+    :param dfs_dict: dict of dataframe produced by the function 'dict_to_dataframes()'
+    :return: None
+    """
+    for evidence in dfs_dict:
+        print('Evidences:', evidence.replace('\n', ' '))
+        display(dfs_dict[evidence])
