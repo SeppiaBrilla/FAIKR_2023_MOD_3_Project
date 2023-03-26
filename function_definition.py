@@ -251,3 +251,19 @@ def make_queries(inferences: 'list[VariableElimination]', names: 'list[str]', ev
             results[name].append(result_dict)
 
     return results
+
+
+def dict_to_dataframes(dict:'dict') -> dict[str, pd.DataFrame]:
+    new_dicts = {}
+    for key in dict.keys():
+        for result in dict[key]:
+            new_res = result.copy()
+            del new_res['evidence']
+            new_res['model'] = key
+            new_dicts[result['evidence']] = new_dicts.get(result['evidence'], []) + [new_res]
+
+    dataframes = {}
+    for key in new_dicts.keys():
+        dataframes[key] = pd.DataFrame(new_dicts[key]).set_index('model')
+
+    return dataframes
