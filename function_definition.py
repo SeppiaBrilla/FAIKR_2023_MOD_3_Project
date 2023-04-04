@@ -119,11 +119,12 @@ def get_the_posterior_probability(model: 'VariableElimination', data: 'pd.DataFr
     return result
 
 
-def fit(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> None:
+def fit(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame', my_lambda=1) -> None:
     """
     :param net: Untrained bayesian network
     :param data: Dataframe used to estimate the parameter of the net
     :return: None
+    :param my_lambda:
     """
     estimator = BayesianEstimator(net, data)
 
@@ -131,7 +132,7 @@ def fit(net: 'BayesianNetwork|NaiveBayes', data: 'pd.DataFrame') -> None:
     for node in data.columns:
         node_card = len(data.loc[:, node].unique())
         parents_card = int(np.prod([len(data.loc[:, p].unique()) for p in net.get_parents(node)]))
-        pseudo_counts[node] = np.ones((node_card, parents_card))
+        pseudo_counts[node] = np.ones((node_card, parents_card)) * my_lambda
 
     cpds = estimator.get_parameters(prior_type="dirichlet", pseudo_counts=pseudo_counts)
 
